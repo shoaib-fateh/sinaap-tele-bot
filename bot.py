@@ -22,22 +22,40 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=reply_markup
         )
 
+# 🧠 هندل کردن کلیک روی دکمه‌های اول
 async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     if query.data == "roadmap":
-        await query.message.reply_text("📍 *نقشه راه تجارت موفق*\n\nدر این دوره با اصول پایه‌ی تجارت، استراتژی‌های بازاریابی و رشد کسب‌وکار آشنا می‌شی.", parse_mode="Markdown")
+        text = "📍 *نقشه راه تجارت موفق*\n\nدر این دوره با اصول پایه‌ی تجارت، استراتژی‌های بازاریابی و رشد کسب‌وکار آشنا می‌شی."
     elif query.data == "speaking":
-        await query.message.reply_text("🎤 *دوره سخنرانی*\n\nیاد می‌گیری چطور با اعتماد به‌نفس صحبت کنی، ذهن مخاطب رو درگیر کنی و روی صحنه بدرخشی.", parse_mode="Markdown")
+        text = "🎤 *دوره سخنرانی*\n\nیاد می‌گیری چطور با اعتماد به‌نفس صحبت کنی، ذهن مخاطب رو درگیر کنی و روی صحنه بدرخشی."
     elif query.data == "business":
-        await query.message.reply_text("💼 *دوره کسب و کار*\n\nاز ایده‌پردازی تا راه‌اندازی یه بیزینس واقعی، اینجا همش رو قدم‌به‌قدم یاد می‌گیری.", parse_mode="Markdown")
+        text = "💼 *دوره کسب و کار*\n\nاز ایده‌پردازی تا راه‌اندازی یه بیزینس واقعی، اینجا همش رو قدم‌به‌قدم یاد می‌گیری."
     else:
-        await query.message.reply_text("😕 گزینه ناشناخته انتخاب شد.")
+        text = "😕 گزینه ناشناخته انتخاب شد."
 
+    # ⬇️ دکمه شروع دوره
+    keyboard = [[InlineKeyboardButton("🚀 شروع دوره", callback_data=f"start_{query.data}")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.message.reply_text(text, parse_mode="Markdown", reply_markup=reply_markup)
+
+# 🎬 وقتی روی "شروع دوره" کلیک می‌کنن
+async def handle_start_course(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    course = query.data.replace("start_", "")
+    await query.message.reply_text(f"✅ دوره *{course}* آغاز شد!\n\n(اینجا قراره محتوای دوره بیاد...)",
+                                   parse_mode="Markdown")
+
+# 💡 ساخت اپ و هندلرها
 app = ApplicationBuilder().token("7767183019:AAFYKTv-SuV2pTHr1jIKF-XncgslcSGGM2w").build()
 
 app.add_handler(CommandHandler("start", start))
+app.add_handler(CallbackQueryHandler(handle_start_course, pattern=r"^start_"))
 app.add_handler(CallbackQueryHandler(handle_button_click))
 
 app.run_polling()
