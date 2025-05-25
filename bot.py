@@ -7,7 +7,7 @@ from telegram.ext import (
 )
 import html
 
-# دیتای دوره نقشه راه تجارت موفق
+# داده‌های دوره‌ی "نقشه راه تجارت موفق"
 roadmap_course = [
     {
         "title": "قسمت اول: شروع از صفر",
@@ -32,9 +32,11 @@ roadmap_course = [
     }
 ]
 
+# وضعیت مشاهده کاربران در دوره‌ها
+user_progress = {}  # user_id -> episode_index
 
-user_progress = {}  # ذخیره وضعیت کاربر: user_id -> index
 
+# فرمان /start: معرفی ربات و دوره‌ها
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("نقشه راه تجارت موفق", callback_data="roadmap")],
@@ -51,40 +53,47 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=reply_markup
         )
 
+
+# کلیک روی دکمه‌های معرفی دوره‌ها
 async def handle_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    if query.data == "roadmap":
-        text = ("📍 <b>نقشه راه تجارت موفق</b>\n\n"
-                "در این دوره با اصول پایه‌ی تجارت، استراتژی‌های بازاریابی و رشد کسب‌وکار آشنا می‌شی.")
-    elif query.data == "speaking":
-        text = ("🎤 <b>دوره سخنرانی</b>\n\n"
-                "یاد می‌گیری چطور با اعتماد به‌نفس صحبت کنی، ذهن مخاطب رو درگیر کنی و روی صحنه بدرخشی.")
-    elif query.data == "business":
-        text = ("💼 <b>دوره کسب و کار</b>\n\n"
-                "از ایده‌پردازی تا راه‌اندازی یه بیزینس واقعی، اینجا همش رو قدم‌به‌قدم یاد می‌گیری.")
-    else:
-        text = "😕 گزینه ناشناخته انتخاب شد."
+    course_texts = {
+        "roadmap": ("📍 <b>نقشه راه تجارت موفق</b>\n\n"
+                    "در این دوره با اصول پایه‌ی تجارت، استراتژی‌های بازاریابی و رشد کسب‌وکار آشنا می‌شی."),
+        "speaking": ("🎤 <b>دوره سخنرانی</b>\n\n"
+                     "یاد می‌گیری چطور با اعتماد به‌نفس صحبت کنی، ذهن مخاطب رو درگیر کنی و روی صحنه بدرخشی."),
+        "business": ("💼 <b>دوره کسب و کار</b>\n\n"
+                     "از ایده‌پردازی تا راه‌اندازی یه بیزینس واقعی، اینجا همش رو قدم‌به‌قدم یاد می‌گیری.")
+    }
 
+    text = course_texts.get(query.data, "😕 گزینه ناشناخته انتخاب شد.")
     keyboard = [[InlineKeyboardButton("🚀 شروع دوره", callback_data=f"start_{query.data}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await query.message.reply_text(text, parse_mode="HTML", reply_markup=reply_markup)
 
+
+# شروع هر دوره
 async def handle_start_course(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     course = query.data.replace("start_", "")
+    user_id = query.from_user.id
 
     if course == "roadmap":
-        user_id = query.from_user.id
-        user_progress[user_id] = 0  # شروع از قسمت اول
+        user_progress[user_id] = 0
         await send_roadmap_part(query, user_id, 0)
     else:
-        await query.message.reply_text(f"✅ دوره <b>{html.escape(course)}</b> آغاز شد!\n\n(محتوا بزودی اضافه می‌شود)", parse_mode="HTML")
+        await query.message.reply_text(
+            f"✅ دوره <b>{html.escape(course)}</b> آغاز شد!\n\n(محتوا بزودی اضافه می‌شود)",
+            parse_mode="HTML"
+        )
 
+
+# ارسال قسمت مشخص از دوره roadmap
 async def send_roadmap_part(query, user_id, index):
     episode = roadmap_course[index]
 
@@ -92,23 +101,21 @@ async def send_roadmap_part(query, user_id, index):
         f"🎬 <b>{html.escape(episode['title'])}</b>\n\n"
         f"{html.escape(episode['desc'])}\n\n"
         f"{html.escape(episode['hashtags'])}\n"
-        # f"🔗 <a href='{episode['link']}'>مشاهده دوره کامل</a>\n\n"
         f"🔹 <b>قسمت {index + 1} از {len(roadmap_course)}</b>"
     )
 
-    keyboard_buttons = []
+    nav_buttons = []
     if index > 0:
-        keyboard_buttons.append(InlineKeyboardButton("⬅️ قسمت قبل", callback_data="roadmap_prev"))
+        nav_buttons.append(InlineKeyboardButton("⬅️ قسمت قبل", callback_data="roadmap_prev"))
     if index < len(roadmap_course) - 1:
-        keyboard_buttons.append(InlineKeyboardButton("➡️ قسمت بعد", callback_data="roadmap_next"))
+        nav_buttons.append(InlineKeyboardButton("➡️ قسمت بعد", callback_data="roadmap_next"))
 
-    reply_markup = InlineKeyboardMarkup([keyboard_buttons]) if keyboard_buttons else None
+    reply_markup = InlineKeyboardMarkup([nav_buttons]) if nav_buttons else None
 
-    # اول پیام قبلی رو حذف کن تا تمیز باشه
     try:
         await query.message.delete()
     except:
-        pass  # اگه پاک نشد مشکلی نیست
+        pass
 
     await query.message.reply_video(
         video=episode["video"],
@@ -118,29 +125,34 @@ async def send_roadmap_part(query, user_id, index):
     )
 
 
+# کنترل دکمه‌های قبلی / بعدی دوره roadmap
 async def handle_roadmap_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
     current_index = user_progress.get(user_id, 0)
 
-    if query.data == "roadmap_next":
-        if current_index < len(roadmap_course) - 1:
-            current_index += 1
-            user_progress[user_id] = current_index
-    elif query.data == "roadmap_prev":
-        if current_index > 0:
-            current_index -= 1
-            user_progress[user_id] = current_index
+    if query.data == "roadmap_next" and current_index < len(roadmap_course) - 1:
+        current_index += 1
+    elif query.data == "roadmap_prev" and current_index > 0:
+        current_index -= 1
 
+    user_progress[user_id] = current_index
     await send_roadmap_part(query, user_id, current_index)
 
-# ساخت اپلیکیشن و هندلرها
-app = ApplicationBuilder().token("7767183019:AAFYKTv-SuV2pTHr1jIKF-XncgslcSGGM2w").build()
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CallbackQueryHandler(handle_start_course, pattern=r"^start_"))
-app.add_handler(CallbackQueryHandler(handle_roadmap_navigation, pattern="^roadmap_(next|prev)$"))
-app.add_handler(CallbackQueryHandler(handle_button_click))  # این باید آخر باشه
+# اجرای ربات
+def main():
+    app = ApplicationBuilder().token("7767183019:AAFYKTv-SuV2pTHr1jIKF-XncgslcSGGM2w").build()
 
-app.run_polling()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(handle_start_course, pattern=r"^start_"))
+    app.add_handler(CallbackQueryHandler(handle_roadmap_navigation, pattern=r"^roadmap_(next|prev)$"))
+    app.add_handler(CallbackQueryHandler(handle_button_click))  # باید آخر باشه
+
+    print("✅ Bot is running...")
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
