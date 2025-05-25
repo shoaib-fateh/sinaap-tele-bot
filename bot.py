@@ -14,20 +14,24 @@ roadmap_course = [
         "desc": "توی این قسمت یاد می‌گیری چطور از هیچی، یک بیزینس بسازی.",
         "link": "https://example.com/course/start",
         "hashtags": "#تجارت #استارتاپ #یادگیری",
+        "video": "https://cdn.pixabay.com/video/2025/05/13/278750_large.mp4"
     },
     {
         "title": "قسمت دوم: ساخت سیستم درآمد",
         "desc": "تو باید سیستم بسازی، نه فقط کار کنی. این قسمت درباره ساختن اون سیستمه.",
         "link": "https://example.com/course/system",
         "hashtags": "#درآمد_غیرفعال #بیزینس",
+        "video": "https://cdn.pixabay.com/video/2023/12/12/192935-893872011_large.mp4"
     },
     {
         "title": "قسمت سوم: رشد و مقیاس‌پذیری",
         "desc": "از مشتری اول به ۱۰۰۰ تا مشتری چطور می‌رسی؟ همینجاست...",
         "link": "https://example.com/course/growth",
         "hashtags": "#مقیاس_پذیری #توسعه_کسب_و_کار",
+        "video": "https://cdn.pixabay.com/video/2016/02/15/2176-155747466_large.mp4"
     }
 ]
+
 
 user_progress = {}  # ذخیره وضعیت کاربر: user_id -> index
 
@@ -83,26 +87,36 @@ async def handle_start_course(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def send_roadmap_part(query, user_id, index):
     episode = roadmap_course[index]
-    text = (
+
+    caption = (
         f"🎬 <b>{html.escape(episode['title'])}</b>\n\n"
         f"{html.escape(episode['desc'])}\n\n"
         f"{html.escape(episode['hashtags'])}\n"
-        f"🔗 <a href='{episode['link']}'>لینک دوره</a>\n\n"
+        # f"🔗 <a href='{episode['link']}'>مشاهده دوره کامل</a>\n\n"
         f"🔹 <b>قسمت {index + 1} از {len(roadmap_course)}</b>"
     )
 
     keyboard_buttons = []
-    # دکمه قسمت قبل
     if index > 0:
         keyboard_buttons.append(InlineKeyboardButton("⬅️ قسمت قبل", callback_data="roadmap_prev"))
-    # دکمه قسمت بعد
     if index < len(roadmap_course) - 1:
         keyboard_buttons.append(InlineKeyboardButton("➡️ قسمت بعد", callback_data="roadmap_next"))
 
     reply_markup = InlineKeyboardMarkup([keyboard_buttons]) if keyboard_buttons else None
 
-    # پیام رو ویرایش کن (edit_message_text) به جای ارسال جدید، برای کم کردن لگ و اسپم
-    await query.message.edit_text(text, parse_mode="HTML", reply_markup=reply_markup, disable_web_page_preview=False)
+    # اول پیام قبلی رو حذف کن تا تمیز باشه
+    try:
+        await query.message.delete()
+    except:
+        pass  # اگه پاک نشد مشکلی نیست
+
+    await query.message.reply_video(
+        video=episode["video"],
+        caption=caption,
+        parse_mode="HTML",
+        reply_markup=reply_markup
+    )
+
 
 async def handle_roadmap_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
